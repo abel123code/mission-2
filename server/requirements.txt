@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+livekit-api
+pydantic
+livekit-agents[tavus,openai,silero]~=1.2
+openai
