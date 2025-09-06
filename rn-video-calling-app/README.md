@@ -17,9 +17,11 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```
 
 3. Generate APK file:
+   ```bash
    cd rn-video-calling app
    eas build -p android --profile preview
    Go to expo.dev
+   ```
 
 In the output, you'll find options to open the app in a
 
