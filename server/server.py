@@ -28,12 +28,15 @@ if not (TAVUS_API_KEY and TAVUS_REPLICA_ID and TAVUS_PERSONA_ID):
 
 app = FastAPI(title="LiveKit Token Server")
 
-# Allow your RN app (emulator/phone) to call this during dev
+# CORS configuration - allow all origins for now
+# TODO: Update this with your actual frontend domains after deployment
+allowed_origins = ["*"]  # Allow all origins for initial deployment
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # dev only; tighten later
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -326,9 +329,13 @@ async def test_tavus_credentials():
 
 if __name__ == "__main__":
     import uvicorn
+    # Use production settings when deployed
+    is_production = os.getenv("RENDER") == "true" or os.getenv("ENVIRONMENT") == "production"
+    
     uvicorn.run(
         "server:app",
         host=os.getenv("HOST", "127.0.0.1"),
         port=int(os.getenv("PORT", "3001")),
-        reload=True,
+        reload=not is_production,  # Disable reload in production
+        workers=1 if is_production else 1,  # Single worker for now
     )
