@@ -60,4 +60,4 @@ TAVUS_PERSONA_ID=your_tavus_persona_id_here
 uvicorn server:app --host 0.0.0.0 --port 3001 --reload
 ```
 
-The server will be available at `http://localhost:3001`
+The server will be available at `http://localhost:3001` or` https://mission-2-3.onrender.com`
