@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { View, Text, SafeAreaView, Button, Platform, Alert } from "react-native";
+import { View, Text, SafeAreaView, Button, Platform, Alert, TouchableOpacity, Image } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { LiveKitRoom, useRoomContext, useLocalParticipant, VideoTrack, useTracks } from "@livekit/react-native";
 import { Track } from "livekit-client";
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { Ionicons } from '@expo/vector-icons';
 
-const TOKEN_BASE = process.env.EXPO_PUBLIC_API_URL || "https://mission-2-3.onrender.com";   
+const TOKEN_BASE = "https://8a84c4f7e0d1.ngrok-free.app";   
+//const TOKEN_BASE = "https://mission-2-3.onrender.com"
 
 function Controls({ 
   isMicEnabled, 
@@ -45,63 +47,142 @@ function Controls({
     setIsCameraEnabled(newCameraState);
     if (localParticipant) {
       try {
-        await localParticipant.setCameraEnabled(newCameraState);
+        if (newCameraState) {
+          // When turning camera on, try to enable it
+          await localParticipant.setCameraEnabled(true);
+        } else {
+          // When turning camera off, just disable it
+          await localParticipant.setCameraEnabled(false);
+        }
         console.log("Camera set successfully to:", newCameraState);
       } catch (error) {
         console.error("Error setting camera:", error);
-        // Revert state if failed
-        setIsCameraEnabled(!newCameraState);
+        // Don't revert state on error - just log it and continue
+        // The UI will show placeholder when camera is off
       }
     }
   };
   
   return (
-    <View style={{ flexDirection: "row", gap: 12, padding: 8 }}>
-      <Button
-        title={isMicEnabled ? "Mute" : "Unmute"}
+    <View className="flex-row justify-center items-center py-5 px-5 bg-black/80 gap-8">
+      <TouchableOpacity 
+        className={`w-14 h-14 rounded-full justify-center items-center shadow-lg ${
+          isMicEnabled ? 'bg-blue-500' : 'bg-red-500'
+        }`}
         onPress={handleMicToggle}
-      />
-      <Button
-        title={isCameraEnabled ? "Camera Off" : "Camera On"}
+      >
+        <Ionicons 
+          name={isMicEnabled ? "mic" : "mic-off"} 
+          size={24} 
+          color="white" 
+        />
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        className="w-16 h-16 rounded-full justify-center items-center bg-red-500 shadow-lg"
+        onPress={() => router.back()}
+      >
+        <Ionicons name="call" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        className={`w-14 h-14 rounded-full justify-center items-center shadow-lg ${
+          isCameraEnabled ? 'bg-blue-500' : 'bg-red-500'
+        }`}
         onPress={handleCameraToggle}
-      />
-      <Button title="Leave" color="#c33" onPress={() => router.back()} />
+      >
+        <Ionicons 
+          name={isCameraEnabled ? "videocam" : "videocam-off"} 
+          size={24} 
+          color="white" 
+        />
+      </TouchableOpacity>
     </View>
   );
 }
 
-function Grid() {
+function Grid({ isCameraEnabled }: { isCameraEnabled: boolean }) {
   const room = useRoomContext();
   const tracks = useTracks([Track.Source.Camera]);
+  const { localParticipant } = useLocalParticipant();
   
   console.log("Grid: Number of video tracks:", tracks.length);
   tracks.forEach((trackRef, index) => {
     console.log(`Track ${index}:`, trackRef.participant?.identity, trackRef.participant?.name);
   });
   
+  // Separate local and remote tracks
+  const localTrack = tracks.find(track => track.participant?.identity === localParticipant?.identity);
+  const remoteTracks = tracks.filter(track => track.participant?.identity !== localParticipant?.identity);
+  
+  if (tracks.length === 0) {
+    return (
+      <View className="flex-1 justify-center items-center bg-black">
+        <Text className="text-white text-base font-medium">No video tracks available</Text>
+        <Text className="text-white/70 text-xs mt-2">Check camera permissions</Text>
+      </View>
+    );
+  }
+  
   return (
-    <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap" }}>
-      {tracks.map((trackRef, index) => (
-        <View key={index} style={{ width: "50%", height: 240, padding: 4 }}>
-          <VideoTrack trackRef={trackRef} style={{ flex: 1 }} />
-          <Text style={{ 
-            position: 'absolute', 
-            bottom: 8, 
-            left: 8, 
-            color: 'white', 
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            padding: 4,
-            borderRadius: 4,
-            fontSize: 12
-          }}>
-            {trackRef.participant?.name || trackRef.participant?.identity || 'Unknown'}
+    <View className="flex-1 bg-black">
+      {/* Main video feed - show the first remote track or local if no remote */}
+      <View className="flex-1 relative">
+        {remoteTracks.length > 0 ? (
+          <VideoTrack 
+            trackRef={remoteTracks[0]} 
+            style={{ flex: 1, width: '100%', height: '100%' }} 
+          />
+        ) : localTrack ? (
+          <VideoTrack 
+            trackRef={localTrack} 
+            style={{ flex: 1, width: '100%', height: '100%' }} 
+          />
+        ) : null}
+        
+        {/* Participant name overlay */}
+        {remoteTracks.length > 0 && (
+          <View className="absolute bottom-5 left-5 bg-black/60 px-3 py-1.5 rounded-2xl">
+            <Text className="text-white text-sm font-medium">
+              {remoteTracks[0].participant?.name || remoteTracks[0].participant?.identity || 'Unknown'}
+            </Text>
+          </View>
+        )}
+      </View>
+      
+      {/* Picture-in-Picture for local video - positioned above control buttons */}
+      <View className="absolute bottom-24 right-5 w-24 h-16 rounded-lg overflow-hidden bg-gray-800 shadow-lg">
+        {isCameraEnabled && localTrack ? (
+          <VideoTrack 
+            trackRef={localTrack} 
+            style={{ flex: 1, width: '100%', height: '100%' }} 
+          />
+        ) : (
+          <View className="flex-1 justify-center items-center bg-gray-700">
+            <Ionicons name="person" size={20} color="white" />
+          </View>
+        )}
+        <View className="absolute bottom-0.5 left-0.5 right-0.5 bg-black/60 px-1 py-0.5 rounded text-center">
+          <Text className="text-white text-xs font-medium">
+            {localTrack?.participant?.name || 'You'}
           </Text>
         </View>
-      ))}
-      {tracks.length === 0 && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: 'white', fontSize: 16 }}>No video tracks available</Text>
-          <Text style={{ color: 'white', fontSize: 12, marginTop: 8 }}>Check camera permissions</Text>
+      </View>
+      
+      {/* Additional remote participants as small tiles */}
+      {remoteTracks.length > 1 && (
+        <View className="absolute top-15 left-5 flex-row gap-2">
+          {remoteTracks.slice(1).map((trackRef, index) => (
+            <View key={index} className="w-20 h-25 rounded-lg overflow-hidden bg-gray-800">
+              <VideoTrack 
+                trackRef={trackRef} 
+                style={{ flex: 1, width: '100%', height: '100%' }} 
+              />
+              <Text className="absolute bottom-0.5 left-0.5 right-0.5 text-white text-xs bg-black/60 px-1 py-0.5 rounded text-center">
+                {trackRef.participant?.name || trackRef.participant?.identity || 'Unknown'}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
     </View>
@@ -295,7 +376,7 @@ export default function CallScreen() {
         video={isCameraEnabled}
         onDisconnected={() => router.back()}
       >
-        <Grid />
+        <Grid isCameraEnabled={isCameraEnabled} />
         <Controls 
           isMicEnabled={isMicEnabled}
           setIsMicEnabled={setIsMicEnabled}
@@ -306,3 +387,4 @@ export default function CallScreen() {
     </View>
   );
 }
+

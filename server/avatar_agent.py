@@ -1,5 +1,6 @@
 import os
 import asyncio
+import uuid
 from dotenv import load_dotenv
 
 from livekit import agents
@@ -47,11 +48,13 @@ async def entrypoint(ctx: agents.JobContext):
     print("[avatar_agent] created AI agent session with STT, LLM, TTS, and VAD")
 
     # Create Tavus avatar session for visual representation
+    # Use unique identity to avoid stuck session issues
+    avatar_identity = f"ai-assistant-{uuid.uuid4().hex[:8]}"
     avatar = tavus.AvatarSession(
         api_key=TAVUS_API_KEY,
         replica_id=TAVUS_REPLICA_ID,
         persona_id=TAVUS_PERSONA_ID,
-        avatar_participant_name="AI Assistant"
+        avatar_participant_name=avatar_identity
     )
     print("[avatar_agent] created Tavus avatar session")
     print(f"[avatar_agent] Tavus config: replica_id={TAVUS_REPLICA_ID}, persona_id={TAVUS_PERSONA_ID}")

@@ -12,12 +12,17 @@
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://mission-2-3.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://mission-2-3.onrender.com",
+        "EXPO_PUBLIC_IS_PRODUCTION": "true"
       }
     },
     "production": {
       "autoIncrement": true,
-      "android": { "buildType": "app-bundle" }
+      "android": { "buildType": "app-bundle" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mission-2-3.onrender.com",
+        "EXPO_PUBLIC_IS_PRODUCTION": "true"
+      }
     }
   },
   "submit": { "production": {} }

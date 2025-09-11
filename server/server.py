@@ -65,9 +65,15 @@ async def start_avatar_agent(room_name: str) -> bool:
             return False
             
         # Check if avatar is already running for this room
-        if room_name in avatar_processes and avatar_processes[room_name].poll() is None:
-            print(f"Avatar already running for room: {room_name}")
-            return True
+        if room_name in avatar_processes:
+            process = avatar_processes[room_name]
+            if process.poll() is None:
+                print(f"Avatar already running for room: {room_name}")
+                return True
+            else:
+                # Process has ended, clean it up
+                print(f"Cleaning up dead avatar process for room: {room_name}")
+                del avatar_processes[room_name]
             
         # Set environment variables for the agent process
         env = os.environ.copy()
@@ -279,6 +285,38 @@ async def get_room_info(room_name: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get room info: {str(e)}")
+
+@app.post("/cleanup-avatar/{room_name}")
+async def cleanup_avatar_process(room_name: str):
+    """
+    Manually clean up a stuck avatar process for a room.
+    """
+    try:
+        if room_name in avatar_processes:
+            process = avatar_processes[room_name]
+            if process.poll() is None:
+                # Process is still running, terminate it
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                print(f"Terminated avatar process for room: {room_name}")
+            del avatar_processes[room_name]
+            return {
+                "success": True,
+                "message": f"Cleaned up avatar process for room: {room_name}"
+            }
+        else:
+            return {
+                "success": True,
+                "message": f"No avatar process found for room: {room_name}"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to cleanup avatar process: {str(e)}"
+        }
 
 @app.get("/test-tavus")
 async def test_tavus_credentials():

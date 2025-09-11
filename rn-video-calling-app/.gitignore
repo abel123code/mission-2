@@ -37,4 +37,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Google Services (contains API keys - should not be committed)
+google-services.json
+GoogleService-Info.plist
+
 app-example
